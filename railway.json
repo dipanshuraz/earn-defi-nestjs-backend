@@ -2,11 +2,11 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm ci && npm run prisma:generate && npm run build"
+    "buildCommand": "npm run prisma:generate && npm run build"
   },
   "deploy": {
     "startCommand": "APP_ENV=production ALLOW_PRODUCTION_MIGRATION=true npm run db:deploy:production && npm run start:prod",
-    "healthcheckPath": "/health/ready",
+    "healthcheckPath": "/api/v1/health/ready",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10

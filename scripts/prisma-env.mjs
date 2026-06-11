@@ -67,7 +67,7 @@ function loadEnvFile() {
     console.log(`▶ Using process environment variables (no .env.${appEnv} file found)`);
   }
 
-  if (!process.env.DATABASE_URL) {
+  if (!process.env.DATABASE_URL && command !== 'generate') {
     fail(`DATABASE_URL is missing for APP_ENV=${appEnv}`);
   }
 }
