@@ -1,0 +1,5 @@
+# Vite + TypeScript are devDependencies but required at build time.
+# Without this, Railway skips them when NODE_ENV=production.
+
+[variables]
+NPM_CONFIG_PRODUCTION = "false"
