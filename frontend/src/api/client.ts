@@ -1,6 +1,7 @@
 import type {
   ApiError,
   AuthResponse,
+  Chain,
   DepositPreview,
   EarnVault,
   EnvironmentInfo,
@@ -87,11 +88,25 @@ export const api = {
     return request<Wallet[]>('/wallets');
   },
 
+  getWallet(walletId: string) {
+    return request<Wallet>(`/wallets/${walletId}`);
+  },
+
   createWallet(chainId: number) {
     return request<Wallet>('/wallets', {
       method: 'POST',
       body: JSON.stringify({ chainId, isPrimary: true }),
     });
+  },
+
+  enableServerSigning(walletId: string) {
+    return request<Wallet>(`/wallets/${walletId}/enable-server-signing`, {
+      method: 'POST',
+    });
+  },
+
+  getChains() {
+    return request<Chain[]>('/chains');
   },
 
   faucetUsdc(walletId: string) {

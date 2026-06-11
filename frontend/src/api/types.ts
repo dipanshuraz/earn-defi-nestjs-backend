@@ -122,6 +122,17 @@ export interface MutationResponse {
   positionStatus?: string;
 }
 
+export interface Chain {
+  slug: string;
+  name: string;
+  chainId: number;
+  isTestnet: boolean;
+  isEnabled: boolean;
+  rpcUrl: string;
+  explorerUrl: string;
+  nativeCurrency: { name: string; symbol: string; decimals: number };
+}
+
 export interface ApiError {
   message: string;
   code?: string;

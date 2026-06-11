@@ -1,24 +1,36 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { api } from './api/client';
 import type { EnvironmentInfo } from './api/types';
 import { Layout } from './components/Layout';
+import { PageLoader } from './components/PageLoader';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { ActivityPage } from './pages/ActivityPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { LoginPage } from './pages/LoginPage';
-import { PortfolioPage } from './pages/PortfolioPage';
-import { VaultsPage } from './pages/VaultsPage';
+import { WalletProvider } from './context/WalletContext';
+
+const LoginPage = lazy(() =>
+  import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })),
+);
+const DashboardPage = lazy(() =>
+  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+);
+const WalletsPage = lazy(() =>
+  import('./pages/WalletsPage').then((m) => ({ default: m.WalletsPage })),
+);
+const VaultsPage = lazy(() =>
+  import('./pages/VaultsPage').then((m) => ({ default: m.VaultsPage })),
+);
+const PortfolioPage = lazy(() =>
+  import('./pages/PortfolioPage').then((m) => ({ default: m.PortfolioPage })),
+);
+const ActivityPage = lazy(() =>
+  import('./pages/ActivityPage').then((m) => ({ default: m.ActivityPage })),
+);
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="loading-screen">
-        <p className="muted">Loading…</p>
-      </div>
-    );
+    return <PageLoader label="Authenticating" />;
   }
 
   if (!user) {
@@ -28,7 +40,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function AppRoutes() {
+function AppShell() {
   const [env, setEnv] = useState<EnvironmentInfo | null>(null);
 
   useEffect(() => {
@@ -38,23 +50,75 @@ function AppRoutes() {
   const isTestnet = env ? !env.allowMainnetTransactions : true;
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route
-        element={
-          <ProtectedRoute>
-            <Layout environment={env?.environment} isTestnet={isTestnet} />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<DashboardPage />} />
-        <Route path="vaults" element={<VaultsPage />} />
-        <Route path="vaults/:vaultId" element={<VaultsPage />} />
-        <Route path="portfolio" element={<PortfolioPage />} />
-        <Route path="activity" element={<ActivityPage />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <WalletProvider>
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <LoginPage />
+            </Suspense>
+          }
+        />
+        <Route
+          element={
+            <ProtectedRoute>
+              <Layout environment={env?.environment} isTestnet={isTestnet} />
+            </ProtectedRoute>
+          }
+        >
+          <Route
+            index
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <DashboardPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="wallets"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <WalletsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="vaults"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <VaultsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="vaults/:vaultId"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <VaultsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="portfolio"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <PortfolioPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="activity"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <ActivityPage />
+              </Suspense>
+            }
+          />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </WalletProvider>
   );
 }
 
@@ -62,7 +126,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <AppRoutes />
+        <AppShell />
       </BrowserRouter>
     </AuthProvider>
   );

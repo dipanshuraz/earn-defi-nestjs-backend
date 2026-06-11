@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Spinner } from '../components/Spinner';
+import { PageLoader } from '../components/PageLoader';
 
 export function LoginPage() {
   const { user, loading, login, register } = useAuth();
@@ -10,7 +12,9 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (!loading && user) {
+  if (loading) return <PageLoader label="Loading" />;
+
+  if (user) {
     return <Navigate to="/" replace />;
   }
 
@@ -67,6 +71,7 @@ export function LoginPage() {
           {error && <p className="error">{error}</p>}
 
           <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {submitting && <Spinner />}
             {submitting
               ? 'Please wait…'
               : mode === 'login'

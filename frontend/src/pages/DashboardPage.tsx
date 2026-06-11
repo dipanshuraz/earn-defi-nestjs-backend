@@ -1,124 +1,81 @@
-import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { EarnVault, Position, Wallet } from '../api/types';
+import type { EarnVault, Position } from '../api/types';
 import { VaultCard } from '../components/VaultCard';
+import { ErrorBanner } from '../components/ErrorBanner';
+import { PageSkeleton } from '../components/Skeleton';
+import { useAsync } from '../hooks/useAsync';
+import { useWallets } from '../context/WalletContext';
 import { formatAmount, truncateAddress } from '../utils/format';
 
 export function DashboardPage() {
-  const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [vaults, setVaults] = useState<EarnVault[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [fauceting, setFauceting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { primaryWallet, loading: walletsLoading } = useWallets();
+  const { data, loading, error, refresh } = useAsync(async () => {
+    const [vaultList, posList] = await Promise.all([
+      api.getVaults(),
+      api.getPositions(),
+    ]);
+    return {
+      vaults: vaultList.filter((v) => v.isEnabled).slice(0, 3) as EarnVault[],
+      positions: posList.filter((p) => p.status === 'ACTIVE') as Position[],
+    };
+  });
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const [wallets, vaultList, posList] = await Promise.all([
-        api.getWallets(),
-        api.getVaults(),
-        api.getPositions(),
-      ]);
-      setWallet(wallets[0] ?? null);
-      setVaults(vaultList.filter((v) => v.isEnabled).slice(0, 3));
-      setPositions(posList.filter((p) => p.status === 'ACTIVE'));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  async function handleCreateWallet() {
-    setCreating(true);
-    setError(null);
-    try {
-      const env = await api.getEnvironment();
-      const w = await api.createWallet(env.chainId);
-      setWallet(w);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create wallet');
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  async function handleFaucet() {
-    if (!wallet) return;
-    setFauceting(true);
-    setError(null);
-    try {
-      await api.faucetUsdc(wallet.walletId);
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Faucet failed');
-    } finally {
-      setFauceting(false);
-    }
-  }
-
+  const positions = data?.positions ?? [];
+  const vaults = data?.vaults ?? [];
   const totalValue = positions.reduce(
     (sum, p) => sum + BigInt(p.currentValue),
     0n,
   );
   const decimals = positions[0]?.assetDecimals ?? 6;
   const symbol = positions[0]?.assetSymbol ?? 'USDC';
-
-  if (loading) {
-    return <p className="muted">Loading…</p>;
-  }
+  const pageLoading = loading || walletsLoading;
 
   return (
     <div className="page">
       <header className="page-header">
         <h1>Dashboard</h1>
+        <p className="muted">Overview of your wallet, positions, and vaults.</p>
       </header>
 
-      {error && <p className="error">{error}</p>}
+      {error && <ErrorBanner message={error} onRetry={refresh} />}
 
       <section className="section">
-        <h2>Wallet</h2>
-        {!wallet ? (
+        <div className="section-header">
+          <h2>Wallet</h2>
+          <Link to="/wallets" className="link">
+            Manage
+          </Link>
+        </div>
+
+        {!pageLoading && !primaryWallet ? (
           <div className="card empty-card">
-            <p>No wallet yet. Create one to start earning.</p>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleCreateWallet}
-              disabled={creating}
-            >
-              {creating ? 'Creating…' : 'Create wallet'}
-            </button>
+            <p>No wallet yet.</p>
+            <Link to="/wallets" className="btn btn-primary">
+              Create wallet
+            </Link>
+          </div>
+        ) : pageLoading ? (
+          <div className="card wallet-summary skeleton-card">
+            <div className="skeleton" style={{ height: 14, width: '40%' }} />
+            <div className="skeleton" style={{ height: 20, width: '60%', marginTop: 8 }} />
           </div>
         ) : (
-          <div className="card wallet-card">
-            <p className="wallet-address">{truncateAddress(wallet.walletAddress)}</p>
-            <div className="wallet-balances">
-              {wallet.balances?.map((b) => (
-                <div key={b.symbol}>
-                  <span className="stat-label">{b.symbol}</span>
-                  <span className="stat-value">
-                    {formatAmount(b.balance, b.decimals, 4)}
+          primaryWallet && (
+            <Link to="/wallets" className="card wallet-summary vault-link">
+              <span className="stat-label">Primary wallet</span>
+              <span className="wallet-address-sm">
+                {truncateAddress(primaryWallet.walletAddress)}
+              </span>
+              <div className="wallet-balances-inline">
+                {primaryWallet.balances?.map((b) => (
+                  <span key={b.symbol} className="muted">
+                    {formatAmount(b.balance, b.decimals, 2)} {b.symbol}
                   </span>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleFaucet}
-              disabled={fauceting}
-            >
-              {fauceting ? 'Minting…' : 'Get test USDC'}
-            </button>
-          </div>
+                ))}
+              </div>
+            </Link>
+          )
         )}
       </section>
 
@@ -130,8 +87,13 @@ export function DashboardPage() {
           </Link>
         </div>
 
-        {positions.length === 0 ? (
-          <p className="muted">No active positions. Deposit into a vault to start.</p>
+        {pageLoading ? (
+          <div className="card skeleton-card">
+            <div className="skeleton" style={{ height: 12, width: 80 }} />
+            <div className="skeleton" style={{ height: 28, width: 140, marginTop: 8 }} />
+          </div>
+        ) : positions.length === 0 ? (
+          <p className="muted">No active positions.</p>
         ) : (
           <div className="summary-card card">
             <span className="stat-label">Total value</span>
@@ -151,13 +113,17 @@ export function DashboardPage() {
           </Link>
         </div>
 
-        <div className="vault-grid">
-          {vaults.map((v) => (
-            <Link key={v.vaultId} to={`/vaults/${v.vaultId}`} className="vault-link">
-              <VaultCard vault={v} />
-            </Link>
-          ))}
-        </div>
+        {pageLoading ? (
+          <PageSkeleton count={2} />
+        ) : (
+          <div className="vault-grid">
+            {vaults.map((v) => (
+              <Link key={v.vaultId} to={`/vaults/${v.vaultId}`} className="vault-link">
+                <VaultCard vault={v} />
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

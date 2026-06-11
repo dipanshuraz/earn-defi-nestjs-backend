@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import type { Position, Wallet } from '../api/types';
 import { formatAmount } from '../utils/format';
 import { newIdempotencyKey } from '../utils/idempotency';
+import { Spinner } from './Spinner';
 
 interface WithdrawModalProps {
   position: Position;
@@ -69,6 +70,7 @@ export function WithdrawModal({
               onClick={handleFullWithdraw}
               disabled={loading}
             >
+              {loading && <Spinner />}
               {loading ? 'Withdrawing…' : 'Withdraw all'}
             </button>
 

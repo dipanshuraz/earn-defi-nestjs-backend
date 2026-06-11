@@ -1,24 +1,15 @@
-import { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import type { Transaction } from '../api/types';
 import { TransactionRow } from '../components/TransactionRow';
+import { ErrorBanner } from '../components/ErrorBanner';
+import { Skeleton } from '../components/Skeleton';
+import { useAsync } from '../hooks/useAsync';
 
 export function ActivityPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error, refresh } = useAsync(() =>
+    api.getTransactions(1, 50).then((res) => res.items),
+  );
 
-  useEffect(() => {
-    api
-      .getTransactions(1, 50)
-      .then((res) => setTransactions(res.items))
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : 'Failed to load activity'),
-      )
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <p className="muted">Loading…</p>;
+  const transactions = data ?? [];
 
   return (
     <div className="page">
@@ -27,9 +18,18 @@ export function ActivityPage() {
         <p className="muted">Your on-chain transactions.</p>
       </header>
 
-      {error && <p className="error">{error}</p>}
+      {error && <ErrorBanner message={error} onRetry={refresh} />}
 
-      {transactions.length === 0 ? (
+      {loading ? (
+        <div className="tx-list">
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="tx-row skeleton-card">
+              <Skeleton height={14} width="30%" />
+              <Skeleton height={12} width="50%" />
+            </div>
+          ))}
+        </div>
+      ) : transactions.length === 0 ? (
         <p className="muted">No transactions yet.</p>
       ) : (
         <div className="tx-list">

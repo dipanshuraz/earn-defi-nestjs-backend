@@ -1,5 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useWallets } from '../context/WalletContext';
+import { truncateAddress } from '../utils/format';
 
 interface LayoutProps {
   environment?: string;
@@ -8,12 +10,13 @@ interface LayoutProps {
 
 export function Layout({ environment, isTestnet }: LayoutProps) {
   const { user, logout } = useAuth();
+  const { primaryWallet } = useWallets();
 
   return (
     <div className="app">
       {isTestnet && (
         <div className="banner banner-testnet">
-          Testnet — {environment ?? 'development'} · transactions use test funds
+          Testnet · {environment ?? 'development'} · test funds only
         </div>
       )}
 
@@ -27,12 +30,18 @@ export function Layout({ environment, isTestnet }: LayoutProps) {
             <NavLink to="/" end>
               Dashboard
             </NavLink>
+            <NavLink to="/wallets">Wallets</NavLink>
             <NavLink to="/vaults">Vaults</NavLink>
             <NavLink to="/portfolio">Portfolio</NavLink>
             <NavLink to="/activity">Activity</NavLink>
           </nav>
 
           <div className="header-actions">
+            {primaryWallet && (
+              <NavLink to="/wallets" className="header-wallet muted">
+                {truncateAddress(primaryWallet.walletAddress)}
+              </NavLink>
+            )}
             <span className="user-email">{user?.email}</span>
             <button type="button" className="btn btn-ghost" onClick={logout}>
               Sign out

@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import type { EarnVault, Wallet } from '../api/types';
 import { formatAmount, parseAmount } from '../utils/format';
 import { newIdempotencyKey } from '../utils/idempotency';
+import { Spinner } from './Spinner';
 
 interface DepositFlowProps {
   vault: EarnVault;
@@ -11,6 +12,8 @@ interface DepositFlowProps {
 }
 
 type Step = 'amount' | 'approve' | 'deposit' | 'done';
+
+const STEPS: Step[] = ['amount', 'approve', 'deposit', 'done'];
 
 export function DepositFlow({ vault, wallet, onComplete }: DepositFlowProps) {
   const [amountInput, setAmountInput] = useState('');
@@ -22,6 +25,7 @@ export function DepositFlow({ vault, wallet, onComplete }: DepositFlowProps) {
   const [baseAmount, setBaseAmount] = useState('');
 
   const usdcBalance = wallet.balances?.find((b) => b.symbol === 'USDC');
+  const stepIndex = STEPS.indexOf(step);
 
   async function handlePreview(e: React.FormEvent) {
     e.preventDefault();
@@ -84,6 +88,19 @@ export function DepositFlow({ vault, wallet, onComplete }: DepositFlowProps) {
 
   return (
     <div className="deposit-flow">
+      <div className="step-indicator">
+        {['Amount', requiresApproval ? 'Approve' : null, 'Deposit', 'Done']
+          .filter(Boolean)
+          .map((label, i) => (
+            <span
+              key={label as string}
+              className={`step-dot ${i <= stepIndex ? 'step-dot-active' : ''}`}
+            >
+              {label}
+            </span>
+          ))}
+      </div>
+
       {step === 'amount' && (
         <form onSubmit={handlePreview} className="form">
           <label className="label">
@@ -108,6 +125,7 @@ export function DepositFlow({ vault, wallet, onComplete }: DepositFlowProps) {
           )}
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
+            {loading && <Spinner />}
             {loading ? 'Checking…' : 'Continue'}
           </button>
         </form>
@@ -117,8 +135,7 @@ export function DepositFlow({ vault, wallet, onComplete }: DepositFlowProps) {
         <div className="step-panel">
           <p>Approve {vault.assetSymbol} spending for this vault.</p>
           <p className="muted">
-            Amount: {formatAmount(baseAmount, vault.assetDecimals, 4)}{' '}
-            {vault.assetSymbol}
+            {formatAmount(baseAmount, vault.assetDecimals, 4)} {vault.assetSymbol}
           </p>
           <button
             type="button"
@@ -126,6 +143,7 @@ export function DepositFlow({ vault, wallet, onComplete }: DepositFlowProps) {
             onClick={handleApprove}
             disabled={loading}
           >
+            {loading && <Spinner />}
             {loading ? 'Approving…' : 'Approve'}
           </button>
         </div>
@@ -135,7 +153,7 @@ export function DepositFlow({ vault, wallet, onComplete }: DepositFlowProps) {
         <div className="step-panel">
           <p>
             {requiresApproval
-              ? 'Approval complete. Confirm your deposit.'
+              ? 'Approval complete. Confirm deposit.'
               : 'Confirm your deposit.'}
           </p>
           <p className="muted">
@@ -147,6 +165,7 @@ export function DepositFlow({ vault, wallet, onComplete }: DepositFlowProps) {
             onClick={handleDeposit}
             disabled={loading}
           >
+            {loading && <Spinner />}
             {loading ? 'Depositing…' : 'Deposit'}
           </button>
         </div>
