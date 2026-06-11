@@ -1,5 +1,9 @@
 # Nixpacks already runs `npm ci` in the install phase.
 # Do not run npm ci again in build — it conflicts with the node_modules cache mount (EBUSY).
 
+[variables]
+NIXPACKS_NODE_VERSION = "20"
+NPM_CONFIG_PRODUCTION = "false"
+
 [phases.build]
 cmds = ["npm run prisma:generate && npm run build"]
