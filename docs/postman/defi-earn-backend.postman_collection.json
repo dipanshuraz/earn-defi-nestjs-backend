@@ -1,0 +1,256 @@
+{
+  "info": {
+    "name": "DeFi Earn Backend",
+    "description": "API collection for the DeFi Earn platform backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
+    { "key": "jwt", "value": "" },
+    { "key": "walletId", "value": "" },
+    { "key": "vaultId", "value": "aave-base-sepolia-usdc" },
+    { "key": "positionId", "value": "" },
+    { "key": "transactionId", "value": "" },
+    { "key": "idempotencyKey", "value": "{{$guid}}" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        { "name": "Liveness", "request": { "method": "GET", "url": "{{baseUrl}}/health" } },
+        { "name": "Readiness", "request": { "method": "GET", "url": "{{baseUrl}}/health/ready" } },
+        { "name": "Details", "request": { "method": "GET", "url": "{{baseUrl}}/health/details" } }
+      ]
+    },
+    {
+      "name": "System",
+      "item": [
+        { "name": "Environment", "request": { "method": "GET", "url": "{{baseUrl}}/system/environment" } }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}" }],
+            "url": "{{baseUrl}}/users/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallets",
+      "item": [
+        {
+          "name": "Create Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"chainId\": 84532\n}" },
+            "url": "{{baseUrl}}/wallets"
+          }
+        },
+        {
+          "name": "List Wallets",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}" }],
+            "url": "{{baseUrl}}/wallets"
+          }
+        },
+        {
+          "name": "Get Wallet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}" }],
+            "url": "{{baseUrl}}/wallets/{{walletId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chains",
+      "item": [
+        { "name": "List Chains", "request": { "method": "GET", "url": "{{baseUrl}}/chains" } }
+      ]
+    },
+    {
+      "name": "Assets",
+      "item": [
+        {
+          "name": "List Assets",
+          "request": { "method": "GET", "url": "{{baseUrl}}/assets?chainId=84532&symbol=USDC" }
+        }
+      ]
+    },
+    {
+      "name": "Earn Vaults",
+      "item": [
+        {
+          "name": "List Vaults",
+          "request": { "method": "GET", "url": "{{baseUrl}}/earn/vaults?chainId=84532" }
+        },
+        {
+          "name": "Get Vault",
+          "request": { "method": "GET", "url": "{{baseUrl}}/earn/vaults/{{vaultId}}" }
+        },
+        {
+          "name": "Preview Deposit",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletId\": \"{{walletId}}\",\n  \"amount\": \"1000000\"\n}"
+            },
+            "url": "{{baseUrl}}/earn/vaults/{{vaultId}}/deposit/preview"
+          }
+        },
+        {
+          "name": "Approve Vault",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "idempotency-key", "value": "{{idempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletId\": \"{{walletId}}\",\n  \"amount\": \"1000000\"\n}"
+            },
+            "url": "{{baseUrl}}/earn/vaults/{{vaultId}}/approve"
+          }
+        },
+        {
+          "name": "Deposit",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "idempotency-key", "value": "{{idempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletId\": \"{{walletId}}\",\n  \"amount\": \"1000000\"\n}"
+            },
+            "url": "{{baseUrl}}/earn/vaults/{{vaultId}}/deposit"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Earn Positions",
+      "item": [
+        {
+          "name": "List Positions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}" }],
+            "url": "{{baseUrl}}/earn/positions"
+          }
+        },
+        {
+          "name": "Get Position",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}" }],
+            "url": "{{baseUrl}}/earn/positions/{{positionId}}"
+          }
+        },
+        {
+          "name": "Partial Withdraw",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "idempotency-key", "value": "{{idempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletId\": \"{{walletId}}\",\n  \"amount\": \"500000\"\n}"
+            },
+            "url": "{{baseUrl}}/earn/positions/{{positionId}}/withdraw"
+          }
+        },
+        {
+          "name": "Full Withdraw",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "idempotency-key", "value": "{{idempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletId\": \"{{walletId}}\",\n  \"fullWithdraw\": true\n}"
+            },
+            "url": "{{baseUrl}}/earn/positions/{{positionId}}/withdraw"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Earn Transactions",
+      "item": [
+        {
+          "name": "List Transactions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}" }],
+            "url": "{{baseUrl}}/earn/transactions?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Get Transaction",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}" }],
+            "url": "{{baseUrl}}/earn/transactions/{{transactionId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

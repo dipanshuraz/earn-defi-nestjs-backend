@@ -1,0 +1,1 @@
+-- Initial migration: schema placeholder for future business models.

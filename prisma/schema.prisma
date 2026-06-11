@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WalletType {
+  EMBEDDED
+  EXTERNAL
+}
+
+enum WalletProviderType {
+  MOCK
+  PRIVY
+}
+
+enum PositionStatus {
+  ACTIVE
+  CLOSED
+  PENDING
+  WITHDRAWING
+  FAILED
+}
+
+enum TransactionType {
+  APPROVAL
+  DEPOSIT
+  WITHDRAW
+  YIELD_CLAIM
+  REBALANCE
+}
+
+enum TransactionStatus {
+  CREATED
+  SUBMITTED
+  CONFIRMED
+  FAILED
+  REVERTED
+}
+
+enum AuditAction {
+  USER_REGISTERED
+  USER_LOGIN
+  WALLET_CREATED
+  APPROVAL_REQUESTED
+  APPROVAL_CONFIRMED
+  DEPOSIT_REQUESTED
+  DEPOSIT_CONFIRMED
+  WITHDRAW_REQUESTED
+  WITHDRAW_CONFIRMED
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  privyUserId  String?  @unique @map("privy_user_id")
+  email        String?  @unique
+  passwordHash String?  @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  wallets         Wallet[]
+  positions       Position[]
+  transactions    Transaction[]
+  idempotencyKeys IdempotencyKey[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model Wallet {
+  id           String             @id @default(uuid()) @db.Uuid
+  userId       String             @map("user_id") @db.Uuid
+  address      String
+  chainId      Int                @map("chain_id")
+  walletType   WalletType         @map("wallet_type")
+  providerId   String             @map("provider_id")
+  providerType WalletProviderType @default(MOCK) @map("provider_type")
+  isPrimary    Boolean            @default(false) @map("is_primary")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([address, chainId])
+  @@index([userId])
+  @@index([address])
+  @@map("wallets")
+}
+
+model Vault {
+  id              String   @id @default(uuid()) @db.Uuid
+  slug            String   @unique
+  name            String
+  chainId         Int      @map("chain_id")
+  contractAddress String   @map("contract_address")
+  assetSymbol     String   @map("asset_symbol")
+  assetDecimals   Int      @map("asset_decimals")
+  apy             Decimal  @db.Decimal(10, 4)
+  tvl             Decimal  @default(0) @db.Decimal(36, 18)
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  positions    Position[]
+  transactions Transaction[]
+
+  @@index([chainId, isActive])
+  @@index([contractAddress, chainId])
+  @@map("vaults")
+}
+
+model Position {
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String         @map("user_id") @db.Uuid
+  vaultId         String         @map("vault_id") @db.Uuid
+  status          PositionStatus @default(ACTIVE)
+  depositedAmount Decimal        @default(0) @map("deposited_amount") @db.Decimal(36, 18)
+  currentAmount   Decimal        @default(0) @map("current_amount") @db.Decimal(36, 18)
+  shares          Decimal        @default(0) @db.Decimal(36, 18)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vault        Vault         @relation(fields: [vaultId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+
+  @@unique([userId, vaultId])
+  @@index([vaultId, status])
+  @@index([userId, status])
+  @@map("positions")
+}
+
+model Transaction {
+  id          String            @id @default(uuid()) @db.Uuid
+  userId      String            @map("user_id") @db.Uuid
+  walletId    String?           @map("wallet_id") @db.Uuid
+  vaultId     String?           @map("vault_id") @db.Uuid
+  positionId  String?           @map("position_id") @db.Uuid
+  type        TransactionType
+  status      TransactionStatus @default(CREATED)
+  amount      Decimal           @db.Decimal(36, 18)
+  txHash      String?           @map("tx_hash")
+  chainId     Int               @map("chain_id")
+  blockNumber BigInt?           @map("block_number")
+  metadata    Json?
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet   Wallet?   @relation(fields: [walletId], references: [id], onDelete: SetNull)
+  vault    Vault?    @relation(fields: [vaultId], references: [id], onDelete: SetNull)
+  position Position? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([txHash])
+  @@index([status, type])
+  @@index([vaultId])
+  @@index([positionId])
+  @@map("transactions")
+}
+
+model IdempotencyKey {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @map("user_id") @db.Uuid
+  key          String
+  requestPath  String   @map("request_path")
+  requestHash  String   @map("request_hash")
+  responseData Json?    @map("response_data")
+  statusCode   Int?     @map("status_code")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([key, requestPath])
+  @@index([expiresAt])
+  @@index([userId])
+  @@map("idempotency_keys")
+}
+
+model AuditLog {
+  id         String      @id @default(uuid()) @db.Uuid
+  userId     String?     @map("user_id") @db.Uuid
+  action     AuditAction
+  entityType String      @map("entity_type")
+  entityId   String      @map("entity_id")
+  metadata   Json?
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
