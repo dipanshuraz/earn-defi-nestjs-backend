@@ -32,9 +32,14 @@ export function getAccessToken(): string | null {
 
 async function request<T>(
   path: string,
-  options: RequestInit & { idempotencyKey?: string } = {},
+  options: RequestInit & { idempotencyKey?: string; timeoutMs?: number } = {},
 ): Promise<T> {
-  const { idempotencyKey, headers: customHeaders, ...rest } = options;
+  const {
+    idempotencyKey,
+    timeoutMs = 60_000,
+    headers: customHeaders,
+    ...rest
+  } = options;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(customHeaders as Record<string, string>),
@@ -47,7 +52,26 @@ async function request<T>(
     headers['idempotency-key'] = idempotencyKey;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, { ...rest, headers });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...rest,
+      headers,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      throw new Error(
+        'Request timed out. Wallet creation can take a minute — wait and retry.',
+      );
+    }
+    if (err instanceof TypeError) {
+      throw new Error(
+        `Cannot reach API (${API_BASE}). Network error or server timeout — try again.`,
+      );
+    }
+    throw err;
+  }
 
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as ApiError;
@@ -96,6 +120,7 @@ export const api = {
     return request<Wallet>('/wallets', {
       method: 'POST',
       body: JSON.stringify({ chainId, isPrimary: true }),
+      timeoutMs: 120_000,
     });
   },
 

@@ -7,6 +7,8 @@ import { useWallets } from '../context/WalletContext';
 export function WalletsPage() {
   const {
     wallets,
+    createChainName,
+    createChainId,
     environment,
     loading,
     error,
@@ -16,12 +18,15 @@ export function WalletsPage() {
     createWallet,
   } = useWallets();
 
-  const chainName =
-    environment?.chain === 'base'
-      ? 'Base'
-      : environment?.chain === 'base-sepolia'
-        ? 'Base Sepolia'
-        : environment?.chain;
+  const isTestnet = environment ? !environment.allowMainnetTransactions : true;
+
+  async function handleCreate() {
+    try {
+      await createWallet();
+    } catch {
+      // error shown via context
+    }
+  }
 
   return (
     <div className="page">
@@ -29,14 +34,14 @@ export function WalletsPage() {
         <div>
           <h1>Wallets</h1>
           <p className="muted">
-            Privy embedded wallets on {chainName ?? 'configured chain'} (chain{' '}
-            {environment?.chainId ?? '…'})
+            Privy embedded wallets · new wallets created on{' '}
+            <strong>{createChainName}</strong> (chain {createChainId})
           </p>
         </div>
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => createWallet()}
+          onClick={handleCreate}
           disabled={creating}
         >
           {creating ? <Spinner /> : null}
@@ -44,24 +49,34 @@ export function WalletsPage() {
         </button>
       </header>
 
+      {creating && (
+        <p className="info-banner">
+          Creating wallet via Privy — this can take up to 60 seconds. Please wait…
+        </p>
+      )}
+
       {error && <ErrorBanner message={error} onRetry={() => refresh()} />}
 
       {loading ? (
         <div className="wallet-list">
           <WalletSkeleton />
-          <WalletSkeleton />
         </div>
       ) : wallets.length === 0 ? (
         <div className="card empty-card">
           <p>No wallets yet. Create one to deposit and earn yield.</p>
+          {!isTestnet && (
+            <p className="muted">
+              Mainnet mode — fund with real ETH (gas) and USDC after creating.
+            </p>
+          )}
           <button
             type="button"
             className="btn btn-primary"
-            onClick={() => createWallet()}
+            onClick={handleCreate}
             disabled={creating}
           >
             {creating ? <Spinner /> : null}
-            {creating ? 'Creating…' : 'Create wallet'}
+            {creating ? 'Creating…' : `Create wallet on ${createChainName}`}
           </button>
         </div>
       ) : (

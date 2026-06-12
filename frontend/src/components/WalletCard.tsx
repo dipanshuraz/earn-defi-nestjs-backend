@@ -53,49 +53,54 @@ export function WalletCard({ wallet, isPending }: WalletCardProps) {
 
   return (
     <div className={`card wallet-card ${isPending ? 'card-pending' : ''}`}>
-      <div className="wallet-card-header">
-        <div>
-          <span className="stat-label">Embedded wallet</span>
-          <div className="wallet-address-row">
-            <code className="wallet-address">{wallet.walletAddress}</code>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={handleCopy}
-              disabled={isPending}
-            >
-              {copied ? 'Copied' : 'Copy'}
-            </button>
+      <div className="wallet-card-inner">
+        <div className="wallet-card-accent">
+          <div className="wallet-card-icon" aria-hidden>
+            ◈
           </div>
+          <div className="wallet-card-header">
+            <span className="wallet-card-type">Embedded wallet</span>
+            <div className="wallet-address-row">
+              <code className="wallet-address">{wallet.walletAddress}</code>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={handleCopy}
+                disabled={isPending}
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+          {wallet.isPrimary && <span className="badge badge-low">Primary</span>}
         </div>
-        {wallet.isPrimary && <span className="badge badge-low">Primary</span>}
-      </div>
 
-      <div className="wallet-meta muted">
-        {chain?.name ?? `Chain ${wallet.chainId}`}
-        {isPending && ' · Creating…'}
-      </div>
+        <div className="wallet-chain-pill">
+          {chain?.name ?? `Chain ${wallet.chainId}`}
+          {isPending && ' · Creating…'}
+        </div>
 
-      <div className="wallet-balances">
-        {wallet.balances?.map((b) => (
-          <div key={b.symbol} className="balance-item">
-            <span className="stat-label">{b.symbol}</span>
-            <span className="stat-value">
-              {isPending ? '—' : formatAmount(b.balance, b.decimals, 4)}
-            </span>
-          </div>
-        )) ?? (
-          <>
-            <div className="balance-item">
-              <span className="stat-label">ETH</span>
-              <span className="stat-value muted">—</span>
+        <div className="wallet-balances">
+          {wallet.balances?.map((b) => (
+            <div key={b.symbol} className="balance-item">
+              <span className="stat-label">{b.symbol}</span>
+              <span className="stat-value">
+                {isPending ? '—' : formatAmount(b.balance, b.decimals, 4)}
+              </span>
             </div>
-            <div className="balance-item">
-              <span className="stat-label">USDC</span>
-              <span className="stat-value muted">—</span>
-            </div>
-          </>
-        )}
+          )) ?? (
+            <>
+              <div className="balance-item">
+                <span className="stat-label">ETH</span>
+                <span className="stat-value muted">—</span>
+              </div>
+              <div className="balance-item">
+                <span className="stat-label">USDC</span>
+                <span className="stat-value muted">—</span>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="wallet-actions">

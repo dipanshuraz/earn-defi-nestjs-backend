@@ -46,51 +46,56 @@ export function WithdrawModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+      <div className="modal modal-withdraw" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-withdraw-header">
           <h2>Withdraw</h2>
           <button type="button" className="btn btn-ghost" onClick={onClose}>
             ×
           </button>
         </div>
 
-        {!done ? (
-          <>
-            <p>
-              Withdraw all from <strong>{position.vaultName}</strong>
-            </p>
-            <p className="stat-value">
-              {formatAmount(position.currentValue, position.assetDecimals, 6)}{' '}
-              {position.assetSymbol}
-            </p>
+        <div className="modal-withdraw-body">
+          {!done ? (
+            <>
+              <p className="modal-withdraw-desc">
+                Withdraw all from <strong>{position.vaultName}</strong>
+              </p>
 
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleFullWithdraw}
-              disabled={loading}
-            >
-              {loading && <Spinner />}
-              {loading ? 'Withdrawing…' : 'Withdraw all'}
-            </button>
+              <div className="modal-withdraw-amount">
+                <p className="stat-value">
+                  {formatAmount(position.currentValue, position.assetDecimals, 6)}
+                </p>
+                <span className="stat-label">{position.assetSymbol}</span>
+              </div>
 
-            {error && <p className="error">{error}</p>}
-          </>
-        ) : (
-          <div className="success-panel">
-            <p>Withdrawal submitted.</p>
-            {explorerUrl && (
-              <a
-                href={explorerUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="link"
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleFullWithdraw}
+                disabled={loading}
               >
-                View on explorer
-              </a>
-            )}
-          </div>
-        )}
+                {loading && <Spinner />}
+                {loading ? 'Withdrawing…' : 'Withdraw all'}
+              </button>
+
+              {error && <p className="error">{error}</p>}
+            </>
+          ) : (
+            <div className="success-panel">
+              <p>Withdrawal submitted.</p>
+              {explorerUrl && (
+                <a
+                  href={explorerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link"
+                >
+                  View on explorer
+                </a>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

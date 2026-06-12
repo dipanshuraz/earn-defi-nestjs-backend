@@ -86,7 +86,8 @@ export class EarnWithdrawService {
       vault,
       wallet.address,
     );
-    const withdrawAmount = this.resolveWithdrawAmount(position, dto, fullWithdraw, onChainShares);
+    const positionShares = BigInt(position.shares.toString());
+    const withdrawAmount = this.resolveWithdrawAmount(position, dto, fullWithdraw);
     const amountBn = BigInt(withdrawAmount);
     const positionAmount = BigInt(position.currentAmount.toString());
 
@@ -98,10 +99,8 @@ export class EarnWithdrawService {
     }
 
     const sharesToBurn = fullWithdraw
-      ? onChainShares
+      ? positionShares
       : await this.earnBlockchainService.previewWithdrawShares(vault, amountBn);
-
-    const positionShares = BigInt(position.shares.toString());
 
     if (sharesToBurn > positionShares) {
       throw new InsufficientPositionBalanceException(
@@ -285,11 +284,9 @@ export class EarnWithdrawService {
     position: PositionWithVault,
     dto: WithdrawPositionDto,
     fullWithdraw: boolean,
-    onChainShares: bigint,
   ): string {
     if (fullWithdraw) {
-      const dbAmount = BigInt(position.currentAmount.toString());
-      return (onChainShares < dbAmount ? onChainShares : dbAmount).toString();
+      return position.currentAmount.toString();
     }
 
     if (!dto.amount) {

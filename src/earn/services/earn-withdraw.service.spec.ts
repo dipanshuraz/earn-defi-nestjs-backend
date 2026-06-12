@@ -281,6 +281,91 @@ describe('EarnWithdrawService', () => {
     expect(result.positionStatus).toBe(PositionStatus.CLOSED);
   });
 
+  it('submits full withdrawal when on-chain share balance exceeds DB shares', async () => {
+    positionsServiceMock.findByIdWithVault.mockResolvedValueOnce({
+      ...positionWithVault,
+      currentAmount: { toString: () => '2' },
+      shares: { toString: () => '2' },
+    });
+    earnBlockchainServiceMock.readVaultShareBalance.mockResolvedValueOnce(99_999n);
+    transactionsServiceMock.createTransaction.mockResolvedValueOnce({
+      transactionId: 'tx-withdraw-dust',
+      status: TransactionStatus.CREATED,
+      amount: '2',
+      txHash: null,
+      blockNumber: null,
+      userId: 'user-1',
+      walletId: 'wallet-1',
+      vaultId: 'db-vault-1',
+      positionId: 'position-1',
+      type: TransactionType.WITHDRAW,
+      chainId: 84532,
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    transactionsServiceMock.markSubmitted.mockResolvedValueOnce({
+      transactionId: 'tx-withdraw-dust',
+      status: TransactionStatus.SUBMITTED,
+      amount: '2',
+      txHash: '0xwithdrawhash',
+      blockNumber: null,
+      userId: 'user-1',
+      walletId: 'wallet-1',
+      vaultId: 'db-vault-1',
+      positionId: 'position-1',
+      type: TransactionType.WITHDRAW,
+      chainId: 84532,
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    transactionsServiceMock.confirmSubmitted.mockResolvedValueOnce({
+      applied: true,
+      transaction: {
+        transactionId: 'tx-withdraw-dust',
+        status: TransactionStatus.CONFIRMED,
+        amount: '2',
+        txHash: '0xwithdrawhash',
+        blockNumber: 18_450_322,
+        userId: 'user-1',
+        walletId: 'wallet-1',
+        vaultId: 'db-vault-1',
+        positionId: 'position-1',
+        type: TransactionType.WITHDRAW,
+        chainId: 84532,
+        metadata: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+    positionsSubtractMock.subtractWithdraw.mockResolvedValueOnce({
+      positionId: 'position-1',
+      status: PositionStatus.CLOSED,
+      depositedAmount: '0',
+      currentAmount: '0',
+      shares: '0',
+      userId: 'user-1',
+      vaultId: 'db-vault-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const result = await service.withdrawPosition('user-1', 'position-1', {
+      walletId: 'wallet-1',
+      fullWithdraw: true,
+    });
+
+    expect(result.fullWithdraw).toBe(true);
+    expect(result.amount).toBe('2');
+    expect(result.sharesBurned).toBe('2');
+    expect(positionsSubtractMock.subtractWithdraw).toHaveBeenCalledWith(
+      'position-1',
+      { withdrawnAmount: '2', shares: '2' },
+      expect.anything(),
+    );
+  });
+
   it('rejects withdrawals for positions not owned by the user', async () => {
     positionsServiceMock.findByIdWithVault.mockResolvedValueOnce({
       ...positionWithVault,

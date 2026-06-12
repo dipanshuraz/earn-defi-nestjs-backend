@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { api } from '../api/client';
 import type { Chain, EnvironmentInfo, Wallet } from '../api/types';
+import { chainLabel, resolveCreateChainId } from '../utils/chain';
 import { useAuth } from './AuthContext';
 
 interface WalletContextValue {
@@ -16,6 +17,8 @@ interface WalletContextValue {
   primaryWallet: Wallet | null;
   chains: Chain[];
   environment: EnvironmentInfo | null;
+  createChainId: number;
+  createChainName: string;
   loading: boolean;
   error: string | null;
   creating: boolean;
@@ -41,18 +44,45 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (!user) return;
-    setError(null);
-    try {
-      const [walletList, chainList, env] = await Promise.all([
-        api.getWallets(),
-        api.getChains(),
-        api.getEnvironment(),
-      ]);
-      setWallets(walletList);
-      setChains(chainList);
-      setEnvironment(env);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load wallets');
+
+    const results = await Promise.allSettled([
+      api.getWallets(),
+      api.getChains(),
+      api.getEnvironment(),
+    ]);
+
+    const failures: string[] = [];
+
+    if (results[0].status === 'fulfilled') {
+      setWallets(results[0].value);
+    } else {
+      failures.push('wallets');
+    }
+
+    if (results[1].status === 'fulfilled') {
+      setChains(results[1].value);
+    } else {
+      failures.push('chains');
+    }
+
+    if (results[2].status === 'fulfilled') {
+      setEnvironment(results[2].value);
+    } else {
+      failures.push('environment');
+    }
+
+    if (failures.length === 3) {
+      const first = results[0];
+      const reason = first.status === 'rejected' ? first.reason : null;
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'Failed to load wallet data',
+      );
+    } else if (failures.length > 0) {
+      setError(null);
+    } else {
+      setError(null);
     }
   }, [user]);
 
@@ -66,8 +96,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     refresh().finally(() => setLoading(false));
   }, [user, refresh]);
 
+  const createChainId = resolveCreateChainId(chains, wallets, environment);
+  const createChainName = chainLabel(chains, createChainId);
+
   const createWallet = useCallback(async () => {
-    const chainId = environment?.chainId ?? 84532;
+    const chainId = resolveCreateChainId(chains, wallets, environment);
     setCreating(true);
     setError(null);
 
@@ -100,7 +133,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     } finally {
       setCreating(false);
     }
-  }, [environment?.chainId, wallets.length]);
+  }, [chains, wallets, environment]);
 
   const faucetUsdc = useCallback(
     async (walletId: string) => {
@@ -136,6 +169,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       primaryWallet,
       chains,
       environment,
+      createChainId,
+      createChainName,
       loading,
       error,
       creating,
@@ -151,6 +186,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       primaryWallet,
       chains,
       environment,
+      createChainId,
+      createChainName,
       loading,
       error,
       creating,
